@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>BioSentinel — Biomedical Anomaly Detection</title>
+<meta name="description" content="Open-source ML system that catches equipment failures and sensor tampering in biomedical sensor data before pharmaceutical batches are damaged."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --c:#00d4ff;--c2:#3b82f6;--teal:#0d9488;
+  --grn:#22c55e;--red:#ef4444;--amb:#f59e0b;--pur:#a855f7;
+  --bg:#050d1a;--bg2:#081525;--bg3:#0a1628;
+  --card:rgba(255,255,255,.035);--cb:rgba(255,255,255,.07);
+  --brd:rgba(0,212,255,.14);--brd2:rgba(255,255,255,.07);
+  --txt:#f1f5f9;--mut:#94a3b8;
+  --w:1140px;--r:12px;
+  --glow:0 0 28px rgba(0,212,255,.15);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden;cursor:none}
+img{max-width:100%;height:auto;display:block}
+a{color:var(--c);text-decoration:none}
+
+/* CURSOR */
+#cur{position:fixed;width:9px;height:9px;background:var(--c);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);box-shadow:0 0 10px var(--c),0 0 22px rgba(0,212,255,.35)}
+#cur-ring{position:fixed;width:34px;height:34px;border:1.5px solid rgba(0,212,255,.4);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .18s,height .18s,border-color .18s}
+#prog{position:fixed;top:0;left:0;height:2px;width:0;background:linear-gradient(90deg,var(--c),var(--c2));z-index:300}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.02) 1px,transparent 1px);background-size:56px 56px;pointer-events:none;z-index:0}
+
+/* LAYOUT */
+.wrap{max-width:var(--w);margin:0 auto;padding:0 28px;position:relative;z-index:1}
+section{padding:88px 0;position:relative;z-index:1}
+.alt{background:var(--bg2)}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:200;background:rgba(5,13,26,.92);backdrop-filter:blur(18px);border-bottom:1px solid var(--brd)}
+.nav-in{max-width:var(--w);margin:0 auto;padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-weight:800;font-size:1.05rem;letter-spacing:-.02em;color:var(--txt);display:flex;align-items:center;gap:9px}
+.logo-box{width:28px;height:28px;background:linear-gradient(135deg,var(--c),var(--c2));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:800;color:#050d1a;letter-spacing:.02em;box-shadow:0 0 14px rgba(0,212,255,.3)}
+.logo span{color:var(--c)}
+.nav-links{display:flex;gap:26px;list-style:none}
+.nav-links a{font-size:.845rem;font-weight:500;color:var(--mut);transition:color .15s}
+.nav-links a:hover,.nav-links a.active{color:var(--c)}
+
+/* TYPOGRAPHY */
+.tag{display:inline-flex;align-items:center;gap:7px;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--c);margin-bottom:10px}
+.tag::before{content:'';width:18px;height:1.5px;background:var(--c)}
+h2{font-size:clamp(1.8rem,3.2vw,2.6rem);font-weight:800;letter-spacing:-.035em;line-height:1.15;margin-bottom:12px}
+.lead{font-size:1rem;color:var(--mut);max-width:580px;line-height:1.78;margin-bottom:44px}
+
+/* CARDS */
+.gc{background:var(--card);border:1px solid var(--brd2);border-radius:var(--r);backdrop-filter:blur(6px);transition:border-color .22s,box-shadow .22s,transform .22s;transform-style:preserve-3d}
+.gc:hover{border-color:var(--brd);box-shadow:var(--glow)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 24px;border-radius:8px;font-size:.88rem;font-weight:600;cursor:none;transition:all .15s;text-decoration:none}
+.btn-c{background:var(--c);color:#050d1a;box-shadow:0 0 20px rgba(0,212,255,.3)}
+.btn-c:hover{background:#2de0ff;box-shadow:0 0 32px rgba(0,212,255,.5)}
+.btn-g{background:var(--cb);color:var(--txt);border:1px solid var(--brd2)}
+.btn-g:hover{border-color:var(--brd);color:var(--c)}
+
+/* HERO */
+#hero{padding:100px 0 72px;overflow:hidden;position:relative}
+.orb{position:absolute;border-radius:50%;pointer-events:none}
+.orb1{width:650px;height:650px;top:-180px;right:-160px;background:radial-gradient(circle,rgba(0,212,255,.065) 0%,transparent 65%)}
+.orb2{width:450px;height:450px;bottom:-80px;left:-120px;background:radial-gradient(circle,rgba(59,130,246,.055) 0%,transparent 65%)}
+canvas#cnv{position:absolute;inset:0;z-index:0;opacity:.4;pointer-events:none}
+.scanline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.28),transparent);animation:scan 5s linear infinite;pointer-events:none;z-index:2}
+@keyframes scan{0%{top:-2px;opacity:0}5%{opacity:1}95%{opacity:1}100%{top:100%;opacity:0}}
+
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(0,212,255,.08);border:1px solid var(--brd);color:var(--c);font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:5px 14px;border-radius:999px;margin-bottom:22px}
+.pdot{width:6px;height:6px;border-radius:50%;background:var(--c);animation:pdot 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pdot{0%,100%{opacity:1}50%{opacity:.3}}
+
+h1{font-size:clamp(2.4rem,5.5vw,3.9rem);font-weight:800;letter-spacing:-.04em;line-height:1.08;margin-bottom:20px;max-width:750px}
+.tw-word{display:inline-block;color:var(--c);min-width:270px}
+.tw-cur{display:inline-block;width:3px;height:.82em;background:var(--c);vertical-align:middle;margin-left:1px;animation:blink .8s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.hsub{font-size:1.05rem;color:var(--mut);max-width:520px;line-height:1.75;margin-bottom:34px}
+.hctas{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:52px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--brd);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;max-width:680px}
+.sc{background:var(--bg3);padding:20px 18px;position:relative;overflow:hidden}
+.sc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--c),var(--c2));transform:scaleX(0);transform-origin:left;transition:transform .28s}
+.sc:hover::after{transform:scaleX(1)}
+.sn{font-size:1.75rem;font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:4px;color:var(--c)}
+.sl{font-size:.7rem;color:var(--mut);font-weight:500}
+
+/* TICKER */
+.ticker-wrap{overflow:hidden;border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);background:rgba(0,212,255,.02);padding:11px 0}
+.ticker{display:flex;gap:0;width:max-content;animation:tick 36s linear infinite}
+.ticker:hover{animation-play-state:paused}
+.ti{font-size:.73rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);white-space:nowrap;padding:0 28px}
+.ti+.ti{border-left:1px solid rgba(0,212,255,.15)}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* PROBLEM */
+.pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.pc{padding:26px}
+.pnum{font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:700;color:var(--c);letter-spacing:.1em;opacity:.6;margin-bottom:12px}
+.pc h3{font-size:.95rem;font-weight:600;margin-bottom:7px}
+.pc p{font-size:.85rem;color:var(--mut);line-height:1.65}
+
+/* Image frame */
+.img-frame{border:1px solid var(--brd);border-radius:var(--r);overflow:hidden}
+.img-frame img{width:100%;height:auto;display:block}
+.img-cap{background:var(--bg2);border-top:1px solid var(--brd2);padding:12px 20px;font-size:.78rem;color:var(--mut);line-height:1.6}
+.img-cap strong{color:var(--c)}
+.leg{display:inline-flex;align-items:center;gap:5px;margin-right:16px}
+.lline{width:20px;height:2px;border-radius:2px;display:inline-block}
+.lsq{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+/* METHODOLOGY TABS */
+.tab-bar{display:flex;border:1px solid var(--brd);border-radius:var(--r) var(--r) 0 0;overflow:hidden}
+.tab-btn{flex:1;padding:13px 8px;background:var(--bg2);border:none;border-right:1px solid var(--brd);cursor:none;font-size:.76rem;font-weight:600;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:3px;transition:background .18s,color .18s}
+.tab-btn:last-child{border-right:none}
+.tab-btn .ts{font-size:.57rem;letter-spacing:.1em;text-transform:uppercase;opacity:.5}
+.tab-btn.active{background:rgba(0,212,255,.08);color:var(--c)}
+.tab-btn:hover:not(.active){background:rgba(255,255,255,.03);color:var(--txt)}
+.best-pill{display:inline-block;background:var(--c);color:#050d1a;font-size:.58rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:middle}
+
+/* Tab pane: stacked layout — text top, image full-width below */
+.tab-content{border:1px solid var(--brd);border-top:none;border-radius:0 0 var(--r) var(--r);overflow:hidden;background:var(--card)}
+.tab-pane{display:none;animation:fi .28s ease}
+.tab-pane.active{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.tab-text{padding:28px 28px 20px}
+.tab-pane h3{font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--txt)}
+.tab-pane p{font-size:.86rem;color:var(--mut);line-height:1.65;margin-bottom:16px}
+.tab-img{border-top:1px solid var(--brd2)}
+.tab-img img{width:100%;height:auto;display:block}
+.tab-img-cap{background:var(--bg2);border-top:1px solid var(--brd2);padding:10px 20px;font-size:.76rem;color:var(--mut)}
+
+/* Metric bars */
+.mbar-grp{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.mbar label{font-size:.72rem;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;display:flex;justify-content:space-between;margin-bottom:4px}
+.mbar label span{color:var(--txt)}
+.mbar-t{height:6px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.mbar-f{height:100%;border-radius:4px}
+.tab-note{padding:12px 16px;background:rgba(0,212,255,.06);border:1px solid var(--brd);border-radius:8px;font-size:.81rem;color:var(--mut);line-height:1.62}
+.tab-note strong{color:var(--c)}
+
+/* RESULTS */
+.rtbl{overflow-x:auto;border:1px solid var(--brd);border-radius:var(--r);margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+thead{background:rgba(0,212,255,.07);border-bottom:1px solid var(--brd)}
+th{padding:13px 16px;text-align:left;font-weight:600;font-size:.7rem;letter-spacing:.07em;text-transform:uppercase;color:var(--c);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--brd2);transition:background .15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(0,212,255,.04)}
+tbody tr.best{background:rgba(0,212,255,.07)}
+td{padding:12px 16px;color:var(--mut)}
+td:first-child{color:var(--txt);font-weight:500}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.74rem;font-weight:700}
+.pg{background:rgba(34,197,94,.14);color:#4ade80}
+.pb{background:rgba(0,212,255,.12);color:var(--c)}
+.pa{background:rgba(245,158,11,.14);color:#fbbf24}
+.pr{background:rgba(239,68,68,.14);color:#f87171}
+.pm{background:rgba(148,163,184,.09);color:var(--mut)}
+
+.note{background:rgba(0,212,255,.05);border-left:3px solid var(--c);border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:28px;font-size:.87rem;color:var(--mut);line-height:1.65}
+.note strong{color:var(--c)}
+
+/* TECHNICAL */
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:42px}
+.ic{padding:24px}
+.ic h3{font-size:.92rem;font-weight:600;margin-bottom:8px;line-height:1.4;color:var(--txt)}
+.ic p{font-size:.84rem;color:var(--mut);line-height:1.65}
+
+/* Terminal */
+.terminal{background:#02070f;border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;margin-bottom:42px}
+.tbar{background:#0b1525;padding:9px 14px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--brd)}
+.tdot{width:9px;height:9px;border-radius:50%}
+.tbody{padding:22px 26px;font-family:'JetBrains Mono',monospace;font-size:.8rem;line-height:1.9;min-height:130px}
+.tl{display:block;white-space:pre-wrap;word-break:break-all}
+.tp{color:#475569}.tg{color:#86efac}.tc{color:var(--c)}.tm{color:var(--mut)}
+
+/* Code block */
+.code-block{background:#02070f;border:1px solid var(--brd);border-radius:var(--r);padding:24px 28px;font-family:'JetBrains Mono',monospace;font-size:.8rem;line-height:1.85;overflow-x:auto;margin-bottom:42px;position:relative}
+.code-block::before{content:'Python';position:absolute;top:11px;right:14px;font-size:.63rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);opacity:.35}
+.ck{color:#7dd3fc}.cfn{color:#86efac}.cs{color:#fde68a}.cn{color:#f9a8d4}.cmt{color:#475569}.cv{color:#e2e8f0}
+
+/* Stack and files */
+.stack{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:42px}
+.sp{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--brd2);border-radius:8px;padding:9px 16px;font-size:.85rem;font-weight:500;transition:border-color .18s,box-shadow .18s;color:var(--txt)}
+.sp:hover{border-color:var(--brd);box-shadow:0 0 14px rgba(0,212,255,.12)}
+.fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.fc{padding:18px;text-align:center}
+.fn{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--c);margin-bottom:5px}
+.fd{font-size:.72rem;color:var(--mut)}
+
+/* ABOUT */
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.at p{font-size:.92rem;color:var(--mut);line-height:1.75;margin-bottom:14px}
+.at p strong{color:var(--txt)}
+.actas{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+.cloud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+.atag{padding:5px 14px;border-radius:999px;font-size:.77rem;font-weight:500;border:1px solid}
+.ac{color:var(--c);border-color:rgba(0,212,255,.28);background:rgba(0,212,255,.07)}
+.ab{color:#93c5fd;border-color:rgba(59,130,246,.28);background:rgba(59,130,246,.09)}
+.am{color:var(--mut);border-color:var(--brd2);background:var(--card)}
+.quote{background:var(--card);border-left:2px solid var(--c);border-radius:0 8px 8px 0;padding:18px 22px;font-size:.9rem;color:var(--mut);font-style:italic;line-height:1.7;margin-top:24px}
+
+/* SCROLL REVEAL */
+.rev{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease}
+.rev.vis{opacity:1;transform:translateY(0)}
+.rev-l{opacity:0;transform:translateX(-22px);transition:opacity .6s ease,transform .6s ease}
+.rev-l.vis{opacity:1;transform:translateX(0)}
+.rev-r{opacity:0;transform:translateX(22px);transition:opacity .6s ease,transform .6s ease}
+.rev-r.vis{opacity:1;transform:translateX(0)}
+.d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.24s}.d4{transition-delay:.32s}
+
+/* FOOTER */
+footer{background:#020810;border-top:1px solid var(--brd2);padding:28px 0;text-align:center;font-size:.78rem;color:var(--mut);position:relative;z-index:1}
+footer a{color:var(--mut)}
+footer a:hover{color:var(--c)}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .pgrid,.igrid,.agrid,.fgrid{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:540px){
+  .stats{grid-template-columns:1fr 1fr}
+  .tab-btn .ts{display:none}
+}
+</style>
+</head>
+<body>
+<div id="cur"></div>
+<div id="cur-ring"></div>
+<div id="prog"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-in">
+    <a href="#hero" class="logo">
+      <div class="logo-box">BS</div>Bio<span>Sentinel</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#problem">Problem</a></li>
+      <li><a href="#methodology">Methodology</a></li>
+      <li><a href="#results">Results</a></li>
+      <li><a href="#technical">Technical</a></li>
+      <li><a href="#about">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="orb orb1"></div><div class="orb orb2"></div>
+  <div class="scanline"></div>
+  <canvas id="cnv"></canvas>
+  <div class="wrap">
+    <div class="badge"><span class="pdot"></span>Open Source · ML · Biocybersecurity</div>
+    <h1>
+      Catching Failures in<br/>
+      <span class="tw-word" id="tw"></span><span class="tw-cur"></span><br/>
+      Before They Cause Harm
+    </h1>
+    <p class="hsub">BioSentinel monitors cold-chain sensors and lab instruments. It flags equipment failures and potential tampering before a pharmaceutical batch is ruined.</p>
+    <div class="hctas">
+      <a href="#methodology" class="btn btn-c">See How It Works</a>
+      <a href="#results"     class="btn btn-g">View Results</a>
+      <a href="#"            class="btn btn-g">GitHub (coming soon)</a>
+    </div>
+    <div class="stats rev">
+      <div class="sc"><div class="sn" data-to="22695">0</div><div class="sl">Sensor readings analyzed</div></div>
+      <div class="sc"><div class="sn" data-to="7" style="color:var(--c2)">0</div><div class="sl">Detectors built and compared</div></div>
+      <div class="sc"><div class="sn" data-to="0.619" data-float="1">0.000</div><div class="sl">Best F1 score (after tuning)</div></div>
+      <div class="sc"><div class="sn" data-to="0.682" data-float="1" style="color:var(--grn)">0.000</div><div class="sl">Best recall achieved</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    <span class="ti">IsolationForest</span>
+    <span class="ti">AUC-PR 0.610</span>
+    <span class="ti">Biomedical Time-Series</span>
+    <span class="ti">Biocybersecurity</span>
+    <span class="ti">F1 Score 0.619</span>
+    <span class="ti">Cold-Chain Monitoring</span>
+    <span class="ti">scikit-learn</span>
+    <span class="ti">22,695 Data Points</span>
+    <span class="ti">NAB Benchmark</span>
+    <span class="ti">Anomaly Detection</span>
+    <span class="ti">Python</span>
+    <span class="ti">Pharma Safety</span>
+    <span class="ti">Feature Engineering</span>
+    <span class="ti">Hyperparameter Tuning</span>
+    <span class="ti">IsolationForest</span>
+    <span class="ti">AUC-PR 0.610</span>
+    <span class="ti">Biomedical Time-Series</span>
+    <span class="ti">Biocybersecurity</span>
+    <span class="ti">F1 Score 0.619</span>
+    <span class="ti">Cold-Chain Monitoring</span>
+    <span class="ti">scikit-learn</span>
+    <span class="ti">22,695 Data Points</span>
+    <span class="ti">NAB Benchmark</span>
+    <span class="ti">Anomaly Detection</span>
+    <span class="ti">Python</span>
+    <span class="ti">Pharma Safety</span>
+    <span class="ti">Feature Engineering</span>
+    <span class="ti">Hyperparameter Tuning</span>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section id="problem" class="alt">
+  <div class="wrap">
+    <div class="tag">The Problem</div>
+    <h2>When Sensors Fail,<br/>Patients Pay the Price</h2>
+    <p class="lead">Cold-chain equipment and lab instruments stream data constantly. Small anomalies go unnoticed until a drug batch is already ruined. BioSentinel catches them as they happen.</p>
+    <div class="pgrid" style="margin-bottom:44px">
+      <div class="pc gc rev d1">
+        <div class="pnum">01</div>
+        <h3>Cold storage failures</h3>
+        <p>A refrigerator storing vaccines or insulin can fail silently at night. By morning the batch is ruined and patients go without.</p>
+      </div>
+      <div class="pc gc rev d2">
+        <div class="pnum">02</div>
+        <h3>Sensor tampering</h3>
+        <p>In pharmaceutical settings, tampered or miscalibrated sensors can hide contaminated batches from quality control behind fake-normal readings.</p>
+      </div>
+      <div class="pc gc rev d3">
+        <div class="pnum">03</div>
+        <h3>The detection gap</h3>
+        <p>Simple thresholds miss slow sustained failures. Advanced systems exist but are proprietary and unauditable. There is no open baseline anyone can inspect.</p>
+      </div>
+      <div class="pc gc rev d4">
+        <div class="pnum">04</div>
+        <h3>A security question</h3>
+        <p>Sensor integrity is a security problem, not just a maintenance one. BioSentinel treats it with the same rigor applied to network intrusion detection.</p>
+      </div>
+    </div>
+    <div class="img-frame rev">
+      <img src="images/signal_overview.png" alt="Machine temperature sensor signal with anomaly windows" loading="lazy"/>
+      <div class="img-cap">
+        <span class="leg"><span class="lline" style="background:#00d4ff"></span>Temperature every 5 minutes</span>
+        <span class="leg"><span class="lsq" style="background:#fbbf24;opacity:.65"></span>Known anomaly window</span>
+        NAB machine_temperature_system_failure — Dec 2013 to Feb 2014 — 22,695 rows
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- METHODOLOGY -->
+<section id="methodology">
+  <div class="wrap">
+    <div class="tag">Methodology</div>
+    <h2>Seven Detectors.<br/>One Honest Story.</h2>
+    <p class="lead">BioSentinel builds detectors in order of complexity. Each step is driven by where the previous one failed. Every design choice is backed by data from a hyperparameter sweep.</p>
+
+    <div class="tab-bar rev">
+      <button class="tab-btn active" data-tab="0"><span class="ts">Step 01</span>3-Sigma</button>
+      <button class="tab-btn"        data-tab="1"><span class="ts">Step 02</span>EWMA</button>
+      <button class="tab-btn"        data-tab="2"><span class="ts">Step 03</span>Hampel / LOF</button>
+      <button class="tab-btn"        data-tab="3"><span class="ts">Step 04</span>IsolationForest</button>
+      <button class="tab-btn"        data-tab="4"><span class="ts">Step 05</span>IF + Rolling <span class="best-pill">Best</span></button>
+    </div>
+
+    <div class="tab-content rev">
+      <!-- Pane 0 -->
+      <div class="tab-pane active" data-pane="0">
+        <div class="tab-text">
+          <h3>3-Sigma Baseline (Global)</h3>
+          <p>Flag anything more than 3 standard deviations from the global mean. A pharma auditor can verify every flag in two lines of arithmetic. Sets the floor that every future model must beat.</p>
+          <div class="mbar-grp">
+            <div class="mbar"><label>Precision<span>0.991</span></label><div class="mbar-t"><div class="mbar-f" style="width:99.1%;background:linear-gradient(90deg,#0d9488,#22c55e)"></div></div></div>
+            <div class="mbar"><label>Recall<span>0.202</span></label><div class="mbar-t"><div class="mbar-f" style="width:20.2%;background:linear-gradient(90deg,#b45309,#f59e0b)"></div></div></div>
+            <div class="mbar"><label>F1 Score<span>0.336</span></label><div class="mbar-t"><div class="mbar-f" style="width:33.6%;background:linear-gradient(90deg,var(--c2),var(--c))"></div></div></div>
+          </div>
+          <div class="tab-note"><strong>Key finding:</strong> Near-perfect precision (almost no false alarms) but misses 80% of real anomalies. The global standard deviation is inflated by the failure period itself, widening the band so the model cannot catch sustained low-temperature readings at 50°C.</div>
+        </div>
+        <div class="tab-img">
+          <img src="images/detector_3sigma.png" alt="3-sigma detector output showing flagged anomaly points" loading="lazy"/>
+          <div class="tab-img-cap">3-Sigma detector — red dots are flags. The sharp December crash is caught but the sustained February failure is mostly missed. Amber dashed lines show the global ±3-sigma bounds.</div>
+        </div>
+      </div>
+
+      <!-- Pane 1 -->
+      <div class="tab-pane" data-pane="1">
+        <div class="tab-text">
+          <h3>EWMA — Exponentially Weighted Moving Average</h3>
+          <p>Uses an exponentially weighted baseline instead of a global mean. With span=5000 (roughly 17 days at 5-minute intervals), the baseline adapts very slowly, staying stable through long failure events.</p>
+          <div class="mbar-grp">
+            <div class="mbar"><label>Precision<span>0.586</span></label><div class="mbar-t"><div class="mbar-f" style="width:58.6%;background:linear-gradient(90deg,#0d9488,#22c55e)"></div></div></div>
+            <div class="mbar"><label>Recall<span>0.513</span></label><div class="mbar-t"><div class="mbar-f" style="width:51.3%;background:linear-gradient(90deg,#b45309,#f59e0b)"></div></div></div>
+            <div class="mbar"><label>F1 Score<span>0.547</span></label><div class="mbar-t"><div class="mbar-f" style="width:54.7%;background:linear-gradient(90deg,var(--c2),var(--c))"></div></div></div>
+          </div>
+          <div class="tab-note"><strong>Key finding:</strong> Tuning the span from 48 to 5000 improved F1 by 10x (0.004 to 0.547). Short spans adapt into the failure period and make it look normal. A span of 5000 behaves close to a global mean, keeping the baseline stable across a 2-day failure event.</div>
+        </div>
+        <div class="tab-img">
+          <img src="images/metrics_bar.png" alt="Precision, recall and F1 bar chart for all detectors" loading="lazy"/>
+          <div class="tab-img-cap">Detector comparison bar chart — EWMA (second group) achieves the highest F1 of any statistical method, but still falls short of IsolationForest-based approaches.</div>
+        </div>
+      </div>
+
+      <!-- Pane 2 -->
+      <div class="tab-pane" data-pane="2">
+        <div class="tab-text">
+          <h3>Hampel Filter and LOF — Why They Fail Here</h3>
+          <p>Two well-known algorithms were tested and both performed poorly. Their failure modes reveal important properties of sustained failures in time-series data.</p>
+          <div class="mbar-grp">
+            <div class="mbar"><label>Hampel Filter F1<span>0.050</span></label><div class="mbar-t"><div class="mbar-f" style="width:5%;background:linear-gradient(90deg,#7c3aed,#a855f7)"></div></div></div>
+            <div class="mbar"><label>LOF (k=20) F1<span>0.119</span></label><div class="mbar-t"><div class="mbar-f" style="width:11.9%;background:linear-gradient(90deg,#9d174d,#ec4899)"></div></div></div>
+          </div>
+          <div class="tab-note">
+            <strong>Hampel:</strong> Uses rolling median plus MAD. The rolling window adapts into the sustained failure, making 40°C readings look normal relative to the local median. Same failure mode as rolling 3-sigma.<br/><br/>
+            <strong>LOF:</strong> Compares local density to that of neighbors. The 48-hour failure creates a dense cluster of roughly 576 similar readings. Each anomalous point has neighbors with similar density, so the LOF score stays low. LOF is designed for isolated outliers, not large dense clusters.
+          </div>
+        </div>
+        <div class="tab-img">
+          <img src="images/pr_curve.png" alt="Precision-recall curves for all detectors" loading="lazy"/>
+          <div class="tab-img-cap">Precision-Recall curves across all score thresholds. LOF (pink) stays near the random baseline. The IF + Rolling curve (cyan) dominates at high recall values, confirming it as the strongest detector.</div>
+        </div>
+      </div>
+
+      <!-- Pane 3 -->
+      <div class="tab-pane" data-pane="3">
+        <div class="tab-text">
+          <h3>IsolationForest — Raw Value</h3>
+          <p>Build 200 random isolation trees. Points isolated in fewer cuts are anomalies. Uses the global distribution, not a local window, so it is immune to the adaptation problem that kills rolling methods.</p>
+          <div class="mbar-grp">
+            <div class="mbar"><label>Precision<span>0.471</span></label><div class="mbar-t"><div class="mbar-f" style="width:47.1%;background:linear-gradient(90deg,#0d9488,#22c55e)"></div></div></div>
+            <div class="mbar"><label>Recall<span>0.566</span></label><div class="mbar-t"><div class="mbar-f" style="width:56.6%;background:linear-gradient(90deg,#b45309,#f59e0b)"></div></div></div>
+            <div class="mbar"><label>F1 Score<span>0.514</span></label><div class="mbar-t"><div class="mbar-f" style="width:51.4%;background:linear-gradient(90deg,var(--c2),var(--c))"></div></div></div>
+          </div>
+          <div class="tab-note"><strong>Key finding:</strong> Recall jumps from 0.20 to 0.57 compared to 3-sigma — a 2.8x improvement. Precision drops because many readings in the 60–70°C range look globally unusual but fall inside normal-labeled windows. The model needs additional context to separate a brief dip from a sustained failure.</div>
+        </div>
+        <div class="tab-img">
+          <img src="images/feature_insight.png" alt="Feature insight showing sustained_dev vs raw signal" loading="lazy"/>
+          <div class="tab-img-cap">Top: raw signal, where the 48-hour failure looks similar to brief dips. Bottom: sustained_dev (value minus 30-hour rolling mean), which drops sharply and stays low through the full failure — giving the next model a clear signal to exploit.</div>
+        </div>
+      </div>
+
+      <!-- Pane 4 -->
+      <div class="tab-pane" data-pane="4">
+        <div class="tab-text">
+          <h3>IsolationForest + Rolling Features <span class="best-pill">Best</span></h3>
+          <p>Adds one engineered feature: <code style="color:var(--c);font-family:'JetBrains Mono',monospace;font-size:.85em">sustained_dev = value - rolling_mean(360)</code>. A hyperparameter sweep over 24 window sizes confirmed 360 rows (30 hours) is optimal. Both precision and recall improve over raw IsolationForest.</p>
+          <div class="mbar-grp">
+            <div class="mbar"><label>Precision<span>0.568</span></label><div class="mbar-t"><div class="mbar-f" style="width:56.8%;background:linear-gradient(90deg,#0d9488,#22c55e)"></div></div></div>
+            <div class="mbar"><label>Recall<span>0.682</span></label><div class="mbar-t"><div class="mbar-f" style="width:68.2%;background:linear-gradient(90deg,#065f46,#22c55e)"></div></div></div>
+            <div class="mbar"><label>F1 Score<span>0.619</span></label><div class="mbar-t"><div class="mbar-f" style="width:61.9%;background:linear-gradient(90deg,var(--c2),var(--c))"></div></div></div>
+          </div>
+          <div class="tab-note"><strong>Key result:</strong> Recall of 0.682 exceeds the 61.2% ceiling for value-only detectors. A reading of 50°C with sustained_dev = -30 is distinguishable from a brief 50°C dip with sustained_dev = +2. One feature, added with intent, breaks the apparent ceiling.</div>
+        </div>
+        <div class="tab-img">
+          <img src="images/detector_iforest_rolling.png" alt="IsolationForest + Rolling detector output" loading="lazy"/>
+          <div class="tab-img-cap">IsolationForest + Rolling (w=360) — red dots show flagged points. The model catches the full February failure period and much of the sustained December events, while the 3-sigma detector above misses nearly all of them.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section id="results" class="alt">
+  <div class="wrap">
+    <div class="tag">Results</div>
+    <h2>Real Numbers.<br/>Honest Limits.</h2>
+    <p class="lead">All metrics computed against four ground-truth windows from the Numenta Anomaly Benchmark. No cherry-picking. The theoretical ceiling is documented and then broken.</p>
+
+    <div class="note rev">
+      <strong>Value-only recall ceiling:</strong> 38.8% of labeled anomaly points fall within the normal temperature range because NAB windows start before the temperature drops. No raw-value-only detector can exceed roughly 61.2% recall. The IsolationForest + Rolling model achieves recall=0.682 by using <code style="color:var(--c)">sustained_dev</code> as a second feature, providing temporal context the raw value cannot.
+    </div>
+
+    <div class="rtbl rev">
+      <table>
+        <thead>
+          <tr><th>Detector</th><th>Type</th><th>Flagged</th><th>TP</th><th>FP</th><th>Precision</th><th>Recall</th><th>F1</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>3-Sigma (Global)</td><td><span class="pill pm">Statistical</span></td><td>462</td><td>458</td><td>4</td><td><span class="pill pg">0.991</span></td><td><span class="pill pr">0.202</span></td><td>0.336</td></tr>
+          <tr><td>Rolling 3-Sigma</td><td><span class="pill pm">Statistical</span></td><td>703</td><td>199</td><td>504</td><td><span class="pill pa">0.283</span></td><td><span class="pill pr">0.088</span></td><td>0.134</td></tr>
+          <tr><td>EWMA (span=5000)</td><td><span class="pill pm">Statistical</span></td><td>1,983</td><td>1,163</td><td>820</td><td><span class="pill pa">0.586</span></td><td><span class="pill pb">0.513</span></td><td>0.547</td></tr>
+          <tr><td>Hampel Filter</td><td><span class="pill pm">Statistical</span></td><td>691</td><td>74</td><td>617</td><td><span class="pill pr">0.107</span></td><td><span class="pill pr">0.033</span></td><td>0.050</td></tr>
+          <tr><td>LOF (k=20)</td><td><span class="pill" style="background:rgba(168,85,247,.12);color:#c084fc">ML</span></td><td>2,724</td><td>298</td><td>2,426</td><td><span class="pill pr">0.109</span></td><td><span class="pill pr">0.131</span></td><td>0.119</td></tr>
+          <tr><td>IsolationForest (Raw)</td><td><span class="pill" style="background:rgba(168,85,247,.12);color:#c084fc">ML</span></td><td>2,724</td><td>1,283</td><td>1,441</td><td><span class="pill pa">0.471</span></td><td><span class="pill pb">0.566</span></td><td>0.514</td></tr>
+          <tr class="best"><td><strong>IsolationForest + Rolling</strong></td><td><span class="pill" style="background:rgba(0,212,255,.12);color:var(--c)">ML + FE</span></td><td>2,724</td><td>1,546</td><td>1,178</td><td><span class="pill pb">0.568</span></td><td><span class="pill pg">0.682</span></td><td><strong style="color:var(--c)">0.619</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- February failure zoom — full width -->
+    <div class="img-frame rev" style="margin-bottom:16px">
+      <img src="images/feb_failure_zoom.png" alt="February failure zoomed in comparison" loading="lazy"/>
+      <div class="img-cap">
+        Zoomed in on the February 7–9 failure event. <strong>Top (3-Sigma):</strong> catches only the absolute lowest readings, misses the majority of the sustained failure. <strong>Bottom (IF + Rolling):</strong> catches the full 48-hour period because sustained_dev stays strongly negative throughout.
+      </div>
+    </div>
+
+    <!-- Metrics bar — full width -->
+    <div class="img-frame rev" style="margin-bottom:16px">
+      <img src="images/metrics_bar.png" alt="Precision, recall, and F1 bar chart" loading="lazy"/>
+      <div class="img-cap">Precision, Recall, and F1 for the four primary detectors. IF + Rolling (rightmost group) wins on both recall and F1. Statistical methods have high precision but low recall — they sound few false alarms but miss most of the actual failures.</div>
+    </div>
+
+    <!-- PR curve — full width -->
+    <div class="img-frame rev" style="margin-bottom:16px">
+      <img src="images/pr_curve.png" alt="Precision-recall curves with AUC-PR scores" loading="lazy"/>
+      <div class="img-cap">Precision-Recall curves across all decision thresholds. AUC-PR summarises ranking ability: a perfect detector has AUC-PR=1.0; a random detector matches the base rate (10.0%). IF + Rolling (cyan, AUC-PR=0.610) dominates at high recall values.</div>
+    </div>
+
+    <!-- All detectors comparison — full width -->
+    <div class="img-frame rev">
+      <img src="images/comparison_all.png" alt="All four detectors plotted against ground truth" loading="lazy"/>
+      <div class="img-cap">All four primary detectors plotted against ground-truth windows (yellow shading). Colored dots are flagged anomaly points. Notice how the 3-sigma detector (top) catches almost nothing in the sustained periods, while IF + Rolling (bottom) covers them well.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HYPERPARAMETER TUNING -->
+<section id="tuning">
+  <div class="wrap">
+    <div class="tag">Hyperparameter Analysis</div>
+    <h2>Every Parameter<br/>Was Swept, Not Guessed.</h2>
+    <p class="lead">Contamination and window size were each swept across a full range of values. The optimal settings were selected by maximizing F1 on the ground-truth labels — documented so anyone can reproduce it.</p>
+    <div class="img-frame rev">
+      <img src="images/tune_sweep.png" alt="Hyperparameter sensitivity sweep for contamination and window size" loading="lazy"/>
+      <div class="img-cap">
+        <strong>Left:</strong> F1 vs contamination. Peaks at 0.12, slightly above the true anomaly rate of 10.0% — the model's internal threshold is slightly conservative.
+        <strong>Right:</strong> F1 vs window size (hours). Peaks at 360 rows = 30 hours. Shorter windows adapt into the failure period; longer windows introduce noise. The 30-hour baseline stays stable across the 48-hour February event.
+      </div>
+    </div>
+    <div class="igrid" style="margin-top:28px">
+      <div class="ic gc rev d1">
+        <h3>Why contamination = 0.12?</h3>
+        <p>The true anomaly rate in this dataset is 10.0% (2,268 of 22,695 readings). A sweep from 0.02 to 0.30 found F1 peaks at contamination=0.12. The IsolationForest threshold calibration is slightly conservative, so setting contamination above the true rate compensates and yields the best precision-recall balance.</p>
+      </div>
+      <div class="ic gc rev d2">
+        <h3>Why long_window = 360 rows (30 hours)?</h3>
+        <p>A sweep from 24 to 576 rows found F1 peaks at 360 rows — 30 hours at 5-minute intervals. The February failure lasts roughly 48 hours. A 30-hour baseline does not fully adapt into the failure, keeping sustained_dev clearly negative throughout the entire event. Shorter windows normalize the failure; longer ones lose resolution near the onset.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECHNICAL -->
+<section id="technical" class="alt">
+  <div class="wrap">
+    <div class="tag">Technical Depth</div>
+    <h2>Why Each Decision<br/>Was Made</h2>
+    <p class="lead">Four findings that are non-obvious and each backed by data run on this dataset.</p>
+
+    <div class="igrid">
+      <div class="ic gc rev d1">
+        <h3>Why IsolationForest instead of a threshold?</h3>
+        <p>A threshold is a single scalar — it only says "too high" or "too low." IsolationForest scores anomalies by how few random cuts it takes to isolate a point. With two input features it operates across a 2D space, detecting combinations that no single numeric threshold could capture.</p>
+      </div>
+      <div class="ic gc rev d2">
+        <h3>Why LOF failed on this dataset</h3>
+        <p>Local Outlier Factor compares the local density of each point to that of its neighbors. The 48-hour February failure creates roughly 576 readings in a dense cluster. Each anomalous point has neighbors with identical density, so the LOF score stays low. LOF was designed for isolated outliers, not large sustained anomaly regions.</p>
+      </div>
+      <div class="ic gc rev d3">
+        <h3>Breaking the 61.2% recall ceiling</h3>
+        <p>38.8% of labeled anomaly points have normal-range temperatures — no raw-value detector can flag them. Adding sustained_dev gives the model a second dimension: a reading of 50°C with sustained_dev = -30 is fundamentally different from a brief 50°C dip with sustained_dev = +2. One feature breaks the apparent ceiling.</p>
+      </div>
+      <div class="ic gc rev d4">
+        <h3>AUC-PR versus F1: two different questions</h3>
+        <p>F1 measures performance at a single threshold. AUC-PR (0.610 for IF + Rolling) measures ranking ability across all thresholds — it answers whether the model consistently assigns higher anomaly scores to true positives than to normal points. AUC-PR is the standard evaluation metric for imbalanced detection problems.</p>
+      </div>
+    </div>
+
+    <!-- Terminal -->
+    <div class="terminal rev">
+      <div class="tbar">
+        <div class="tdot" style="background:#ef4444"></div>
+        <div class="tdot" style="background:#f59e0b"></div>
+        <div class="tdot" style="background:#22c55e"></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--mut);margin-left:8px">biosentinel — terminal</span>
+      </div>
+      <div class="tbody" id="term-out"><span class="tl tp">$ </span></div>
+    </div>
+
+    <!-- Code block -->
+    <div class="code-block rev">
+<span class="cmt"># Core function — two features that push F1 from 0.514 to 0.619</span>
+<span class="ck">def</span> <span class="cfn">detect_iforest_rolling</span>(<span class="cv">df</span>, contamination=<span class="cn">0.12</span>, long_window=<span class="cn">360</span>):
+    <span class="cv">v</span>             = <span class="cv">df</span>[<span class="cs">"value"</span>]
+    <span class="cv">sustained_dev</span> = <span class="cv">v</span> - <span class="cv">v</span>.rolling(long_window, min_periods=<span class="cn">1</span>).mean()
+    <span class="cv">X</span>             = pd.DataFrame({<span class="cs">"value"</span>: <span class="cv">v</span>, <span class="cs">"sustained_dev"</span>: <span class="cv">sustained_dev</span>})
+    <span class="cv">clf</span>           = IsolationForest(contamination=contamination, random_state=<span class="cn">42</span>, n_estimators=<span class="cn">200</span>)
+    <span class="cv">clf</span>.fit(<span class="cv">X</span>)
+    <span class="cv">df</span>[<span class="cs">"anomaly"</span>] = <span class="cv">clf</span>.predict(<span class="cv">X</span>) == -<span class="cn">1</span>
+    <span class="cv">df</span>[<span class="cs">"score"</span>]  = -<span class="cv">clf</span>.decision_function(<span class="cv">X</span>)  <span class="cmt"># higher = more anomalous</span>
+    <span class="ck">return</span> <span class="cv">df</span>
+    </div>
+
+    <div class="tag">Stack</div>
+    <h3 style="font-size:1rem;color:var(--txt);margin-bottom:18px">Built in Python</h3>
+    <div class="stack rev">
+      <div class="sp">pandas</div>
+      <div class="sp">scikit-learn</div>
+      <div class="sp">matplotlib</div>
+      <div class="sp">Streamlit</div>
+      <div class="sp">numpy</div>
+      <div class="sp">NAB Dataset</div>
+      <div class="sp">Python 3.13</div>
+    </div>
+
+    <div class="tag">Project Files</div>
+    <h3 style="font-size:1rem;color:var(--txt);margin-bottom:18px">A complete, runnable codebase</h3>
+    <div class="fgrid rev">
+      <div class="fc gc"><div class="fn">biosentinel.py</div><div class="fd">All 7 detectors, CLI, and scoring</div></div>
+      <div class="fc gc"><div class="fn">compare.py</div><div class="fd">Run all detectors side by side</div></div>
+      <div class="fc gc"><div class="fn">tune.py</div><div class="fd">Hyperparameter sweep analysis</div></div>
+      <div class="fc gc"><div class="fn">pr_curve.py</div><div class="fd">PR curves and AUC-PR scores</div></div>
+      <div class="fc gc"><div class="fn">app.py</div><div class="fd">Streamlit interactive demo</div></div>
+      <div class="fc gc"><div class="fn">explore.py</div><div class="fd">Load and visualize the signal</div></div>
+      <div class="fc gc"><div class="fn">evaluate.py</div><div class="fd">Baseline evaluation pipeline</div></div>
+      <div class="fc gc"><div class="fn">generate_web_images.py</div><div class="fd">Reproducible figure generation</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="wrap">
+    <div class="tag">About</div>
+    <h2>Built by Srujan Chilakapati</h2>
+    <div class="agrid">
+      <div class="at rev-l">
+        <p>I built BioSentinel because I wanted to work at the intersection of machine learning, biomedical data, and security. The idea that one sensor reading could be the difference between a safe drug batch and a compromised one is what got me started.</p>
+        <p>The design principle is <strong>honesty over polish</strong>. Every detector is motivated by the failure of the one before it. The theoretical recall ceiling is documented. The hyperparameter tuning is reproducible with one command. The detectors that failed — Hampel and LOF — are included and explained rather than quietly dropped.</p>
+        <p>If you are a researcher or student working with biomedical time-series data, this codebase is open, readable, and built to be extended.</p>
+        <div class="actas">
+          <a href="mailto:srcthelegend@gmail.com" class="btn btn-c">Contact</a>
+          <a href="#" class="btn btn-g">GitHub (coming soon)</a>
+        </div>
+      </div>
+      <div class="rev-r">
+        <div class="cloud">
+          <span class="atag ac">Machine Learning</span>
+          <span class="atag ac">Biocybersecurity</span>
+          <span class="atag ab">Anomaly Detection</span>
+          <span class="atag ab">IsolationForest</span>
+          <span class="atag am">Python</span>
+          <span class="atag am">scikit-learn</span>
+          <span class="atag ac">Time-Series</span>
+          <span class="atag ab">Feature Engineering</span>
+          <span class="atag am">Hyperparameter Tuning</span>
+          <span class="atag ac">AUC-PR</span>
+          <span class="atag ab">NAB Benchmark</span>
+          <span class="atag ac">Open Source</span>
+        </div>
+        <div class="quote">
+          "The recall ceiling is not a failure. It is a result. Knowing exactly why a detector cannot exceed 61.2% recall — and then engineering a feature that breaks through it — is more valuable than a black-box model claiming 95%."
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <p>BioSentinel &middot; Built by <a href="mailto:srcthelegend@gmail.com">Srujan Chilakapati</a> &middot; Dataset: <a href="https://github.com/numenta/NAB" target="_blank" rel="noopener">Numenta Anomaly Benchmark</a> &middot; Open source</p>
+  </div>
+</footer>
+
+<script>
+/* CURSOR */
+const cur=document.getElementById('cur'),ring=document.getElementById('cur-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px'},{passive:true});
+(function anim(){rx+=(mx-rx)*.1;ry+=(my-ry)*.1;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(anim)})();
+document.querySelectorAll('a,button,.btn,.gc,.tab-btn,.sc').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{ring.style.width='50px';ring.style.height='50px';ring.style.borderColor='rgba(0,212,255,.7)'});
+  el.addEventListener('mouseleave',()=>{ring.style.width='34px';ring.style.height='34px';ring.style.borderColor='rgba(0,212,255,.4)'});
+});
+
+/* SCROLL PROGRESS */
+const pb=document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const st=document.documentElement.scrollTop,sh=document.documentElement.scrollHeight-document.documentElement.clientHeight;
+  pb.style.width=(st/sh*100)+'%';
+},{passive:true});
+
+/* NAV ACTIVE */
+const secs=document.querySelectorAll('section[id]');
+const links=document.querySelectorAll('.nav-links a');
+const nio=new IntersectionObserver(e=>e.forEach(en=>{if(en.isIntersecting)links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+en.target.id))}),{threshold:.3});
+secs.forEach(s=>nio.observe(s));
+
+/* SCROLL REVEAL */
+const rio=new IntersectionObserver(e=>e.forEach(en=>{if(en.isIntersecting){en.target.classList.add('vis');rio.unobserve(en.target)}}),{threshold:.09});
+document.querySelectorAll('.rev,.rev-l,.rev-r').forEach(r=>rio.observe(r));
+
+/* COUNTERS */
+const cio=new IntersectionObserver(e=>e.forEach(en=>{
+  if(!en.isIntersecting)return;cio.unobserve(en.target);
+  const el=en.target,to=parseFloat(el.dataset.to),isF=!!el.dataset.float,suf=el.dataset.suf||'';
+  const dur=1100,t0=performance.now();
+  const tick=now=>{const p=Math.min((now-t0)/dur,1),ease=1-Math.pow(1-p,3),v=to*ease;
+    el.textContent=isF?v.toFixed(3)+suf:Math.round(v).toLocaleString()+suf;if(p<1)requestAnimationFrame(tick);};
+  requestAnimationFrame(tick);
+}),{threshold:.5});
+document.querySelectorAll('[data-to]').forEach(c=>cio.observe(c));
+
+/* TYPEWRITER */
+const words=['Biomedical Sensors','Cold-Chain Anomalies','Lab Instruments','Pharmaceutical Safety','Sensor Tampering'];
+let wi=0,ci=0,del=false;
+const tw=document.getElementById('tw');
+function step(){
+  const w=words[wi];
+  if(!del){tw.textContent=w.slice(0,++ci);if(ci===w.length){del=true;setTimeout(step,1800);return}setTimeout(step,55+Math.random()*35);}
+  else{tw.textContent=w.slice(0,--ci);if(ci===0){del=false;wi=(wi+1)%words.length;setTimeout(step,360);return}setTimeout(step,28);}
+}
+setTimeout(step,1100);
+
+/* CANVAS */
+const canvas=document.getElementById('cnv'),ctx=canvas.getContext('2d');
+let W,H,pts=[];
+function resize(){W=canvas.width=canvas.offsetWidth;H=canvas.height=canvas.offsetHeight;
+  pts=Array.from({length:60},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.22,vy:(Math.random()-.5)*.22,r:Math.random()*1.3+.7,o:Math.random()*.42+.1}))}
+new ResizeObserver(resize).observe(canvas.parentElement);resize();
+let sy=-10;
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  sy+=.55;if(sy>H+8)sy=-8;
+  const sg=ctx.createLinearGradient(0,0,W,0);
+  sg.addColorStop(0,'transparent');sg.addColorStop(.5,'rgba(0,212,255,.11)');sg.addColorStop(1,'transparent');
+  ctx.fillStyle=sg;ctx.fillRect(0,sy-1,W,3);
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+    const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+    if(d<115){ctx.strokeStyle=`rgba(0,212,255,${(1-d/115)*.14})`;ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.stroke()}}
+  pts.forEach(p=>{
+    const g=Math.abs(p.y-sy)<16;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r+(g?.45:0),0,Math.PI*2);
+    ctx.fillStyle=g?`rgba(0,212,255,${p.o+.25})`:`rgba(0,212,255,${p.o})`;ctx.fill();
+    p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+  });
+  requestAnimationFrame(draw);
+}
+draw();
+
+/* CARD TILT */
+document.querySelectorAll('.gc').forEach(c=>{
+  c.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;c.style.transform=`perspective(700px) rotateX(${-y*5}deg) rotateY(${x*5}deg) translateZ(4px)`});
+  c.addEventListener('mouseleave',()=>c.style.transform='');
+});
+
+/* TABS */
+const tbts=document.querySelectorAll('.tab-btn'),tpns=document.querySelectorAll('.tab-pane');
+tbts.forEach(b=>b.addEventListener('click',()=>{
+  const i=b.dataset.tab;
+  tbts.forEach(x=>x.classList.remove('active'));tpns.forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');document.querySelector(`.tab-pane[data-pane="${i}"]`).classList.add('active');
+}));
+
+/* TERMINAL */
+const tlines=[
+  {t:'cmd', s:'python biosentinel.py data/machine_temp.csv --detector rolling-iforest --long-window 360 \\\n        --labels "2013-12-10 06:25:00" "2013-12-12 05:35:00" \\\n                 "2013-12-15 17:50:00" "2013-12-17 17:00:00" \\\n                 "2014-01-27 14:20:00" "2014-01-29 13:30:00" \\\n                 "2014-02-07 14:55:00" "2014-02-09 14:05:00"'},
+  {t:'out', s:'\nLoaded 22,695 rows from data/machine_temp.csv'},
+  {t:'out', s:'Date range: 2013-12-02  to  2014-02-19'},
+  {t:'out', s:'Mean: 85.93   Std: 13.75   Min: 2.08   Max: 108.51'},
+  {t:'ok',  s:'\nDetector:       IsolationForest + Rolling (c=0.12, w=360)'},
+  {t:'out', s:'Points flagged: 2,724 / 22,695  (12.00%)'},
+  {t:'out', s:'Ground truth:   2,268 labeled anomaly points'},
+  {t:'out', s:'\nTP: 1,546  |  FP: 1,178  |  FN: 722'},
+  {t:'ok',  s:'Precision:  0.568'},
+  {t:'ok',  s:'Recall:     0.682'},
+  {t:'ok',  s:'F1:         0.619'},
+  {t:'out', s:'\nRecall ceiling for value-only detectors: 61.2%'},
+  {t:'ok',  s:'This detector reaches 111.4% of the theoretical ceiling.'},
+];
+const tout=document.getElementById('term-out');
+let tstarted=false;
+new IntersectionObserver(e=>{if(e[0].isIntersecting&&!tstarted){tstarted=true;runT()}},{threshold:.35}).observe(tout);
+const sl=ms=>new Promise(r=>setTimeout(r,ms));
+async function typeIn(el,s,spd=20){for(const ch of s){el.textContent+=ch;await sl(spd+Math.random()*10)}}
+async function runT(){
+  await sl(300);
+  const first=tout.querySelector('.tl');first.innerHTML='<span class="tp">$ </span>';
+  await typeIn(first,tlines[0].s,14);
+  await sl(250);
+  for(let i=1;i<tlines.length;i++){
+    const sp=document.createElement('span');sp.className='tl';
+    sp.style.color=tlines[i].t==='ok'?'#22c55e':tlines[i].t==='cmd'?'var(--c)':'var(--mut)';
+    tout.appendChild(sp);await typeIn(sp,tlines[i].s,8);await sl(50);
+  }
+}
+</script>
+</body>
+</html>
