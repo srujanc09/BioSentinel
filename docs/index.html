@@ -84,7 +84,8 @@ h1{font-size:clamp(2.4rem,5.5vw,3.9rem);font-weight:800;letter-spacing:-.04em;li
 .hctas{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:52px}
 
 /* Stats */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--brd);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;max-width:680px}
+@keyframes statsFade{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--brd);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;max-width:680px;animation:statsFade .55s ease .35s both}
 .sc{background:var(--bg3);padding:20px 18px;position:relative;overflow:hidden}
 .sc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--c),var(--c2));transform:scaleX(0);transform-origin:left;transition:transform .28s}
 .sc:hover::after{transform:scaleX(1)}
@@ -270,7 +271,7 @@ footer a:hover{color:var(--c)}
       <a href="#results"     class="btn btn-g">View Results</a>
       <a href="https://github.com/srujanc09/BioSentinel" target="_blank" rel="noopener" class="btn btn-g">View on GitHub</a>
     </div>
-    <div class="stats rev">
+    <div class="stats">
       <div class="sc"><div class="sn" data-to="22695">0</div><div class="sl">Sensor readings analyzed</div></div>
       <div class="sc"><div class="sn" data-to="7" style="color:var(--c2)">0</div><div class="sl">Detectors built and compared</div></div>
       <div class="sc"><div class="sn" data-to="0.619" data-float="1">0.000</div><div class="sl">Best F1 score (after tuning)</div></div>
@@ -703,16 +704,18 @@ secs.forEach(s=>nio.observe(s));
 const rio=new IntersectionObserver(e=>e.forEach(en=>{if(en.isIntersecting){en.target.classList.add('vis');rio.unobserve(en.target)}}),{threshold:.09});
 document.querySelectorAll('.rev,.rev-l,.rev-r').forEach(r=>rio.observe(r));
 
-/* COUNTERS */
-const cio=new IntersectionObserver(e=>e.forEach(en=>{
-  if(!en.isIntersecting)return;cio.unobserve(en.target);
-  const el=en.target,to=parseFloat(el.dataset.to),isF=!!el.dataset.float,suf=el.dataset.suf||'';
+/* COUNTERS — plain timeout so threshold/viewport issues can't block them */
+function runCounter(el){
+  const to=parseFloat(el.dataset.to),isF=!!el.dataset.float,suf=el.dataset.suf||'';
   const dur=1100,t0=performance.now();
-  const tick=now=>{const p=Math.min((now-t0)/dur,1),ease=1-Math.pow(1-p,3),v=to*ease;
-    el.textContent=isF?v.toFixed(3)+suf:Math.round(v).toLocaleString()+suf;if(p<1)requestAnimationFrame(tick);};
+  const tick=now=>{
+    const p=Math.min((now-t0)/dur,1),ease=1-Math.pow(1-p,3),v=to*ease;
+    el.textContent=isF?v.toFixed(3)+suf:Math.round(v).toLocaleString()+suf;
+    if(p<1)requestAnimationFrame(tick);
+  };
   requestAnimationFrame(tick);
-}),{threshold:.5});
-document.querySelectorAll('[data-to]').forEach(c=>cio.observe(c));
+}
+setTimeout(()=>document.querySelectorAll('[data-to]').forEach(runCounter),350);
 
 /* TYPEWRITER */
 const words=['Biomedical Sensors','Cold-Chain Anomalies','Lab Instruments','Pharmaceutical Safety','Sensor Tampering'];

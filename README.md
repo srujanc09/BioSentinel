@@ -21,7 +21,15 @@ BioSentinel is evaluated on the [Numenta Anomaly Benchmark](https://github.com/n
 - Four labeled anomaly windows covering equipment failure events
 - 2,268 labeled anomaly points (10.0% of all readings)
 
-The dataset is not included in this repository. Download it from the NAB repository and place it at `data/machine_temp.csv`.
+The dataset is not included in this repository (the `data/` folder is gitignored). To use it:
+
+```bash
+mkdir data
+curl -L -o data/machine_temp.csv \
+  "https://raw.githubusercontent.com/numenta/NAB/master/data/realKnownCause/machine_temperature_system_failure.csv"
+```
+
+Or download that URL manually and save the file as `data/machine_temp.csv`.
 
 ---
 
@@ -171,18 +179,22 @@ streamlit run app.py
 # Compare all 7 detectors and print the full table
 python compare.py
 
-# Hyperparameter sweep (contamination and window size)
+# Hyperparameter sweep — generates data/tune_sweep.png
 python tune.py
 
-# Precision-Recall curves and AUC-PR for 5 detectors
+# Precision-Recall curves — generates data/pr_curve.png
 python pr_curve.py
 
 # Explore the raw signal
 python explore.py
 
 # Regenerate all website images
+# Note: run tune.py and pr_curve.py first — generate_web_images.py copies
+# data/tune_sweep.png and data/pr_curve.png into docs/images/
 python generate_web_images.py
 ```
+
+The figures in `docs/images/` are pre-generated and committed, so a fresh clone does not need to re-run these to use the site.
 
 ---
 
